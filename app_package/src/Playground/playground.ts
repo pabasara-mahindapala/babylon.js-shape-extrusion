@@ -91,15 +91,6 @@ class Playground {
 
         return this.scene;
     }
-
-    // var getGroundPosition = function () {
-    //     var pickinfo = scene.pick(scene.pointerX, scene.pointerY, function (mesh) { return mesh == ground; });
-    //     if (pickinfo.hit) {
-    //         return pickinfo.pickedPoint;
-    //     }
-
-    //     return null;
-    // }
     getGroundPosition() {
         if (this.scene) {
             var pickinfo = this.scene.pick(this.scene.pointerX, this.scene.pointerY, (mesh) => { return mesh == this.ground; });
@@ -110,18 +101,13 @@ class Playground {
 
         return null;
     }
-
-    // var pointerDown = function (mesh) {
-    //     currentMesh = mesh;
-    //     startingPoint = getGroundPosition();
-    //     if (startingPoint) { // we need to disconnect camera from canvas
-    //         setTimeout(function () {
-    //             camera.detachControl(canvas);
-    //         }, 0);
-    //     }
-    // }
     pointerDown(mesh: BABYLON.AbstractMesh) {
         this.currentMesh = mesh;
+
+        const moveMaterial = new BABYLON.StandardMaterial("moveMaterial", this.scene);
+        moveMaterial.diffuseColor = new BABYLON.Color3(1, 1, 0);
+
+        this.currentMesh.material = moveMaterial;
         this.startingPoint = this.getGroundPosition();
         if (this.startingPoint) { // we need to disconnect camera from canvas
             setTimeout(() => {
@@ -130,36 +116,16 @@ class Playground {
         }
     }
 
-    // var pointerUp = function () {
-    //     if (startingPoint) {
-    //         camera.attachControl(canvas, true);
-    //         startingPoint = null;
-    //         return;
-    //     }
-    // }
-
     pointerUp() {
         if (this.startingPoint) {
             this.camera.attachControl(this.canvas, true);
+            if (this.currentMesh) {
+                this.currentMesh.material = null;
+            }
             this.startingPoint = null;
             return;
         }
     }
-
-    // var pointerMove = function () {
-    //     if (!startingPoint) {
-    //         return;
-    //     }
-    //     var current = getGroundPosition();
-    //     if (!current) {
-    //         return;
-    //     }
-
-    //     var diff = current.subtract(startingPoint);
-    //     currentMesh.position.addInPlace(diff);
-
-    //     startingPoint = current;
-    // }
 
     pointerMove() {
         if (!this.startingPoint || !this.currentMesh) {
