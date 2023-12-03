@@ -16,13 +16,21 @@ There are three modes of operation. Extrusion is performed by clicking the "Extr
 
 Click the "Draw" button to enter draw mode. In draw mode, left-click to add points to the shape, and right-click to complete the shape. Once drawing the shapes is complete, click the "Draw" button again to exit draw mode. To extrude the shapes you have drawn, click the "Extrude" button.
 
+![Alt text](draw-mode.png)
+
+![Alt text](extrude.png)
+
 ### 2. Move mode:
 
 Click the "Move" button to enter move mode. In move mode, left-click and drag to move the selected shape. Click the "Move" button again to exit move mode.
 
+![Alt text](move-mode.png)
+
 ### 3. Vertex Edit mode:
 
 Click the "Vertex Edit" button to enter vertex edit mode. In vertex edit mode, Right click to select a vertex that you want to modify. A box will appear around the selected vertex. Left-click and drag the box to move the selected vertex. Click the "Vertex Edit" button again to exit vertex edit mode.
+
+![Alt text](edit-mode.png)
 
 ## Implementation
 

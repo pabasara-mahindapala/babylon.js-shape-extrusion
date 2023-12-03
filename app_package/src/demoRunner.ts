@@ -1,5 +1,5 @@
 import { Engine } from "@babylonjs/core";
-import { CreatePlaygroundScene } from "./Playground/playground";
+import { CreateDemoScene as CreateDemoScene } from "./Demo/demo";
 
 export interface InitializeBabylonAppOptions {
     canvas: HTMLCanvasElement;
@@ -15,7 +15,7 @@ export function initializeBabylonApp(options: InitializeBabylonAppOptions) {
 
     const canvas = options.canvas;
     const engine = new Engine(canvas);
-    const scene = CreatePlaygroundScene(engine, canvas);
+    const scene = CreateDemoScene(engine, canvas);
     engine.runRenderLoop(() => {
         scene.render();
     });
