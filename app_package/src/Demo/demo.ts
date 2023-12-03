@@ -1,11 +1,9 @@
-// import * as BABYLON from "@babylonjs/core";
 import "@babylonjs/loaders";
-// import * as GUI from "@babylonjs/gui";
 import earcut from 'earcut';
 import { ArcRotateCamera, Scene, Mesh, Nullable, Vector3, AbstractMesh, LinesMesh, StandardMaterial, Engine, MeshBuilder, HemisphericLight, AxesViewer, PointerEventTypes, Matrix, VertexBuffer, Color3 } from "@babylonjs/core";
 import { AdvancedDynamicTexture, Control, Button } from "@babylonjs/gui";
 
-class Playground {
+class Demo {
     camera: ArcRotateCamera;
     scene: Scene;
     ground: Mesh;
@@ -32,10 +30,10 @@ class Playground {
         this.scene = new Scene(engine);
         this.camera = new ArcRotateCamera("camera", 0, 0, 0, new Vector3(0, 0, 0), this.scene);
         this.ground = MeshBuilder.CreateGround("ground", { width: 60, height: 60 }, this.scene);
-        this.CreateScene(engine, canvas);
+        this.createScene(engine, canvas);
     }
 
-    public CreateScene(engine: Engine, canvas: HTMLCanvasElement) {
+    createScene(engine: Engine, canvas: HTMLCanvasElement) {
         this.camera.setPosition(new Vector3(6, 12, 30));
         this.camera.attachControl(canvas, true);
         this.camera.upperBetaLimit = Math.PI / 2;
@@ -414,6 +412,6 @@ class Playground {
     }
 }
 
-export function CreatePlaygroundScene(engine: Engine, canvas: HTMLCanvasElement): Scene {
-    return new Playground(engine, canvas).getScene();
+export function CreateDemoScene(engine: Engine, canvas: HTMLCanvasElement): Scene {
+    return new Demo(engine, canvas).getScene();
 }
