@@ -18,7 +18,12 @@ class Playground {
     shapelines: BABYLON.LinesMesh[] = [];
     spheres: BABYLON.Mesh[] = [];
     currentShapePoints: BABYLON.Vector3[] = [];
-    dragBoxes: BABYLON.Mesh[] = [];
+    dragBox: BABYLON.Nullable<BABYLON.Mesh> = null;
+    dragBoxMat: BABYLON.StandardMaterial | null = null;
+    currentPickedMesh: BABYLON.AbstractMesh | undefined;
+    fidx: number | undefined;
+    xIndexes: number[] = [];
+    zIndexes: number[] = [];
 
     constructor(engine: BABYLON.Engine, canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -50,45 +55,7 @@ class Playground {
             switch (pointerInfo.type) {
                 case BABYLON.PointerEventTypes.POINTERDOWN:
                     if (pointerInfo.event.button === 2) {
-                        if (!this.isVertexEditing) break;
-
-                        var ray = this.scene.createPickingRay(this.scene.pointerX, this.scene.pointerY, BABYLON.Matrix.Identity(), this.camera);
-                        var hit = this.scene.pickWithRay(ray);
-                        if (hit && hit.pickedMesh && hit.pickedMesh != this.ground) {
-                            var wMatrix = hit.pickedMesh.computeWorldMatrix(true);
-                            var wireframeMaterial = new BABYLON.StandardMaterial("wireframeMaterial", this.scene);
-                            wireframeMaterial.wireframe = true;
-                            hit.pickedMesh.material = wireframeMaterial;
-                            hit.pickedMesh.isPickable = true;
-                            var positions = hit.pickedMesh.getVerticesData(BABYLON.VertexBuffer.PositionKind);
-                            var indices = hit.pickedMesh.getIndices();
-                            var dragBox = BABYLON.Mesh.CreateBox("dragBox", 0.15, this.scene);
-                            var vertexPoint = BABYLON.Vector3.Zero();
-                            var fidx = hit.faceId
-                            var minDist = Infinity;
-                            var dist = 0;
-                            var hitPoint = hit.pickedPoint;
-                            var idx = 0;
-                            var boxPosition = BABYLON.Vector3.Zero();
-                            if (!indices || !positions || !hitPoint) break;
-                            for (var i = 0; i < 3; i++) {
-                                idx = indices[3 * fidx + i]
-                                vertexPoint.x = positions[3 * idx];
-                                vertexPoint.y = positions[3 * idx + 1];
-                                vertexPoint.z = positions[3 * idx + 2];
-                                BABYLON.Vector3.TransformCoordinatesToRef(vertexPoint, wMatrix, vertexPoint);
-                                dist = vertexPoint.subtract(hitPoint).length();
-                                if (dist < minDist) {
-                                    boxPosition = vertexPoint.clone();
-                                    minDist = dist;
-                                }
-                            }
-                            dragBox.position = boxPosition;
-                            var dragBoxMat = new BABYLON.StandardMaterial("dragBoxMat", this.scene);
-                            dragBoxMat.diffuseColor = new BABYLON.Color3(1.4, 3, 0.2);
-                            dragBox.material = dragBoxMat;
-                            this.dragBoxes.push(dragBox);
-                        }
+                        this.addDragBox();
                     }
                     else if (pointerInfo.pickInfo && pointerInfo.pickInfo.hit && pointerInfo.pickInfo.pickedMesh && pointerInfo.pickInfo.pickedMesh != this.ground) {
                         this.pointerDown(pointerInfo.pickInfo.pickedMesh)
@@ -104,20 +71,76 @@ class Playground {
         });
     }
 
-    public getScene(): BABYLON.Scene {
+    addDragBox() {
+        if (!this.isVertexEditing) return;
+        this.disposeDragBox();
+        var ray = this.scene.createPickingRay(this.scene.pointerX, this.scene.pointerY, BABYLON.Matrix.Identity(), this.camera);
+        var pickingInfo = this.scene.pickWithRay(ray);
+        if (!!pickingInfo && !!pickingInfo.pickedMesh && pickingInfo.pickedMesh != this.ground) {
+            this.xIndexes = [];
+            this.zIndexes = [];
+            this.currentPickedMesh = pickingInfo.pickedMesh;
+            var wMatrix = pickingInfo.pickedMesh.computeWorldMatrix(true);
+            pickingInfo.pickedMesh.isPickable = true;
+            var positions = pickingInfo.pickedMesh.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+            var indices = pickingInfo.pickedMesh.getIndices();
+            this.dragBox = BABYLON.Mesh.CreateBox("dragBox", 0.15, this.scene);
+            var vertexPoint = BABYLON.Vector3.Zero();
+            this.fidx = pickingInfo.faceId
+            var minDist = Infinity;
+            var dist = 0;
+            var hitPoint = pickingInfo.pickedPoint;
+            var idx = 0;
+            var boxPosition = BABYLON.Vector3.Zero();
+            if (!indices || !positions || !hitPoint) return;
+            for (var i = 0; i < 3; i++) {
+                idx = indices[3 * this.fidx + i]
+                vertexPoint.x = positions[3 * idx];
+                vertexPoint.y = positions[3 * idx + 1];
+                vertexPoint.z = positions[3 * idx + 2];
+                BABYLON.Vector3.TransformCoordinatesToRef(vertexPoint, wMatrix, vertexPoint);
+                dist = vertexPoint.subtract(hitPoint).length();
+                if (dist < minDist) {
+                    boxPosition = vertexPoint.clone();
+                    minDist = dist;
+                }
+            }
+            this.dragBox.position = boxPosition;
+            for (var i = 0; i < positions.length; i++) {
+                if (positions[i] == boxPosition.x) {
+                    this.xIndexes.push(i);
+                }
+                if (positions[i] == boxPosition.z) {
+                    this.zIndexes.push(i);
+                }
+            }
 
+            this.dragBoxMat = new BABYLON.StandardMaterial("dragBoxMat", this.scene);
+            this.dragBoxMat.diffuseColor = new BABYLON.Color3(1.4, 3, 0.2);
+            this.dragBox.material = this.dragBoxMat;
+        }
+    }
+
+    public getScene(): BABYLON.Scene {
         return this.scene;
     }
-    getGroundPosition() {
+
+    getPosition(ground: boolean = true) {
         if (this.scene) {
-            var pickinfo = this.scene.pick(this.scene.pointerX, this.scene.pointerY, (mesh) => { return mesh == this.ground; });
-            if (pickinfo && pickinfo.hit) {
+            var pickinfo = this.scene.pick(this.scene.pointerX, this.scene.pointerY, (mesh) => {
+                return ground ? mesh == this.ground : true;
+            });
+            if (pickinfo && pickinfo.hit && pickinfo.pickedPoint) {
+                if (pickinfo.pickedPoint.y < 0) {
+                    pickinfo.pickedPoint.y = 0;
+                }
                 return pickinfo.pickedPoint;
             }
         }
 
         return null;
     }
+
     pointerDown(mesh: BABYLON.AbstractMesh) {
         if (this.isMoving) {
             this.currentMesh = mesh;
@@ -126,8 +149,19 @@ class Playground {
             moveMaterial.diffuseColor = new BABYLON.Color3(1, 1, 0);
 
             this.currentMesh.material = moveMaterial;
-            this.startingPoint = this.getGroundPosition();
+            this.startingPoint = this.getPosition();
+
             // Disconnecting the camera from canvas
+            if (this.startingPoint) {
+                setTimeout(() => {
+                    this.camera.detachControl(this.canvas);
+                }, 0);
+            }
+        } else if (this.isVertexEditing && this.dragBox) {
+            const moveMaterial = new BABYLON.StandardMaterial("moveMaterial", this.scene);
+            moveMaterial.diffuseColor = new BABYLON.Color3(1, 1, 0);
+            this.dragBox.material = moveMaterial;
+            this.startingPoint = this.getPosition(false);
             if (this.startingPoint) {
                 setTimeout(() => {
                     this.camera.detachControl(this.canvas);
@@ -137,7 +171,6 @@ class Playground {
     }
 
     pointerUp(event: PointerEvent) {
-
         if (this.isMoving) {
             if (this.startingPoint) {
                 this.camera.attachControl(this.canvas, true);
@@ -168,6 +201,15 @@ class Playground {
                 this.shapes.push(this.currentShapePoints);
                 this.currentShapePoints = [];
             }
+        } else if (this.isVertexEditing) {
+            if (this.startingPoint) {
+                this.camera.attachControl(this.canvas, true);
+                if (this.dragBox) {
+                    this.dragBox.material = this.dragBoxMat;
+                }
+                this.startingPoint = null;
+                this.disposeDragBox();
+            }
         }
     }
 
@@ -176,7 +218,7 @@ class Playground {
             if (!this.startingPoint || !this.currentMesh) {
                 return;
             }
-            var current = this.getGroundPosition();
+            var current = this.getPosition();
             if (!current) {
                 return;
             }
@@ -185,6 +227,37 @@ class Playground {
             this.currentMesh.position.addInPlace(diff);
 
             this.startingPoint = current;
+        } else if (this.isVertexEditing) {
+            if (!this.startingPoint || !this.dragBox) {
+                return;
+            }
+
+            var current = this.getPosition(false);
+            if (!current || !this.currentPickedMesh || (!this.fidx && this.fidx != 0)) {
+                return;
+            }
+
+            var diff = current.subtract(this.startingPoint);
+            this.dragBox.position.addInPlace(diff);
+
+            this.startingPoint = current;
+
+            var positions = this.currentPickedMesh.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+            var indices = this.currentPickedMesh.getIndices();
+
+            if (!positions || !indices) {
+                return;
+            }
+
+            for (var i = 0; i < this.xIndexes.length; i++) {
+                positions[this.xIndexes[i]] = current.x;
+            }
+
+            for (var i = 0; i < this.zIndexes.length; i++) {
+                positions[this.zIndexes[i]] = current.z;
+            }
+
+            this.currentPickedMesh.updateVerticesData(BABYLON.VertexBuffer.PositionKind, positions);
         }
     }
 
@@ -241,8 +314,13 @@ class Playground {
                 if (this.isVertexEditing) {
                     vertexEditButton.background = "green";
                     vertexEditButton.textBlock.text = "Vertex Edit";
-                    this.disposeDragBoxes();
-                    this.isVertexEditing = false;
+                    this.disposeDragBox();
+                    if (this.extrudedMeshes && this.extrudedMeshes.length > 0) {
+                        for (const extrudedMesh of this.extrudedMeshes) {
+                            extrudedMesh.material = null;
+                        }
+                        this.isVertexEditing = false;
+                    }
                 } else {
                     vertexEditButton.background = "red";
                     vertexEditButton.textBlock.text = "Stop";
@@ -253,12 +331,10 @@ class Playground {
         return vertexEditButton;
     }
 
-    disposeDragBoxes() {
-        if (this.dragBoxes && this.dragBoxes.length > 0) {
-            for (const dragBox of this.dragBoxes) {
-                dragBox.dispose();
-            }
-            this.dragBoxes = [];
+    disposeDragBox() {
+        if (this.dragBox) {
+            this.dragBox.dispose();
+            this.dragBox = null;
         }
     }
 
@@ -272,9 +348,11 @@ class Playground {
                         shape: shape,
                         depth: 1.5,
                         sideOrientation: BABYLON.Mesh.DOUBLESIDE,
-                        // updatable: true
+                        updatable: true,
+                        wrap: true
                     }, this.scene, earcut.default);
                     extrudedMesh.position.y = 1.5;
+                    extrudedMesh.convertToFlatShadedMesh();
                     if (!this.extrudedMeshes) this.extrudedMeshes = [];
                     this.extrudedMeshes.push(extrudedMesh);
                 }
