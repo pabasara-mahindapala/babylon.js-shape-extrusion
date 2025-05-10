@@ -1,5 +1,5 @@
 import { Engine } from "@babylonjs/core";
-import { CreateDemoScene as CreateDemoScene } from "./Demo/demo";
+import { CreateDemoScene } from "./Demo/demo";
 
 export interface InitializeBabylonAppOptions {
     canvas: HTMLCanvasElement;
